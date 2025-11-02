@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -35,41 +36,87 @@ func main() {
 }
 
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
-	slog.Info("Proxying request",
+	slog.Info("Request received",
 		"method", r.Method,
-		"url", r.URL.String(),
+		"host", r.Host,
 		"remote_addr", r.RemoteAddr,
 	)
 
+	if r.Method == http.MethodConnect {
+		handleTunnel(w, r)
+		return
+	}
+
+	// For non-CONNECT methods, do basic HTTP forwarding
+	handleHTTP(w, r)
+}
+
+func handleTunnel(w http.ResponseWriter, r *http.Request) {
+	targetConn, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
+	if err != nil {
+		slog.Error("Failed to connect to target", "host", r.Host, "error", err)
+		http.Error(w, "Failed to connect to target", http.StatusBadGateway)
+		return
+	}
+	defer targetConn.Close()
+
+	hijacker, ok := w.(http.Hijacker)
+	if !ok {
+		slog.Error("Hijacking not supported")
+		http.Error(w, "Hijacking not supported", http.StatusInternalServerError)
+		return
+	}
+
+	clientConn, _, err := hijacker.Hijack()
+	if err != nil {
+		slog.Error("Failed to hijack connection", "error", err)
+		http.Error(w, "Failed to hijack connection", http.StatusInternalServerError)
+		return
+	}
+	defer clientConn.Close()
+
+	_, err = clientConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+	if err != nil {
+		slog.Error("Failed to send connection established", "error", err)
+		return
+	}
+
+	slog.Info("Tunnel established", "host", r.Host)
+
+	// Bidirectional copy
+	go io.Copy(targetConn, clientConn)
+	io.Copy(clientConn, targetConn)
+
+	slog.Info("Tunnel closed", "host", r.Host)
+}
+
+func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	targetURL := r.URL.String()
-	if r.URL.Scheme == "" {
-		// If no scheme is provided, assume http
+	if !r.URL.IsAbs() && r.Host != "" {
 		targetURL = "http://" + r.Host + r.URL.Path
 		if r.URL.RawQuery != "" {
 			targetURL += "?" + r.URL.RawQuery
 		}
 	}
 
-	proxyReq, err := http.NewRequest(r.Method, targetURL, r.Body)
+	outReq, err := http.NewRequest(r.Method, targetURL, r.Body)
 	if err != nil {
-		slog.Error("Failed to create proxy request", "error", err)
-		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
+		slog.Error("Failed to create request", "error", err)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
 	for key, values := range r.Header {
 		for _, value := range values {
-			proxyReq.Header.Add(key, value)
+			outReq.Header.Add(key, value)
 		}
 	}
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-	resp, err := client.Do(proxyReq)
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(outReq)
 	if err != nil {
-		slog.Error("Failed to execute proxy request", "error", err)
-		http.Error(w, "Failed to proxy request", http.StatusBadGateway)
+		slog.Error("Failed to send request", "error", err, "url", targetURL)
+		http.Error(w, "Bad Gateway", http.StatusBadGateway)
 		return
 	}
 	defer resp.Body.Close()
@@ -81,16 +128,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
 
-	_, err = io.Copy(w, resp.Body)
-	if err != nil {
-		slog.Error("Failed to copy response body", "error", err)
-		return
-	}
-
-	slog.Info("Request proxied successfully",
-		"method", r.Method,
-		"url", targetURL,
-		"status", resp.StatusCode,
-	)
+	slog.Info("HTTP request proxied", "url", targetURL, "status", resp.StatusCode)
 }
