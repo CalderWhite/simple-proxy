@@ -1,29 +1,55 @@
 package main
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
 	"io"
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
+	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	utils "github.com/simple-proxy"
 )
 
-func main() {
-	utils.InitLogger()
+type proxyServer struct {
+	passwordHash []byte
+	username     string
+}
 
-	port := os.Getenv("PROXY_PORT")
-	if port == "" {
-		port = "8080"
+func NewProxyServer(username, passwordHashHex string) (*proxyServer, error) {
+	hash, err := hex.DecodeString(passwordHashHex)
+	if err != nil {
+		slog.Error("Failed to decode password hash", "error", err)
+		return nil, err
 	}
+
+	if len(hash) != 32 {
+		slog.Error("Invalid SHA256 hash length", "expected", 32, "got", len(hash))
+		return nil, errors.New("invalid SHA256 hash")
+	}
+
+	slog.Info("Password hash loaded successfully")
+
+	return &proxyServer{
+		passwordHash: hash,
+		username:     username,
+	}, nil
+}
+
+func (s *proxyServer) Run() error {
+	port := utils.GetEnvOrDefault("PROXY_PORT", "8080")
 
 	slog.Info("Simple Proxy is starting...", "port", port)
 
 	server := &http.Server{
 		Addr:         "[::]:" + port,
-		Handler:      http.HandlerFunc(proxyHandler),
+		Handler:      http.HandlerFunc(s.proxyHandler),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
@@ -31,27 +57,74 @@ func main() {
 	slog.Info("Proxy server listening", "address", server.Addr)
 	if err := server.ListenAndServe(); err != nil {
 		slog.Error("Server failed to start", "error", err)
-		os.Exit(1)
+		return err
 	}
+
+	return nil
 }
 
-func proxyHandler(w http.ResponseWriter, r *http.Request) {
+func (s *proxyServer) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Request received",
 		"method", r.Method,
 		"host", r.Host,
 		"remote_addr", r.RemoteAddr,
 	)
 
+	if !s.authenticate(r) {
+		w.Header().Set("Proxy-Authenticate", "Basic realm=\"Proxy\"")
+		http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
+		slog.Warn("Authentication failed", "remote_addr", r.RemoteAddr)
+		return
+	}
+
 	if r.Method == http.MethodConnect {
-		handleTunnel(w, r)
+		s.handleTunnel(w, r)
 		return
 	}
 
 	// For non-CONNECT methods, do basic HTTP forwarding
-	handleHTTP(w, r)
+	s.handleHTTP(w, r)
 }
 
-func handleTunnel(w http.ResponseWriter, r *http.Request) {
+func (s *proxyServer) authenticate(r *http.Request) bool {
+	auth := r.Header.Get("Proxy-Authorization")
+	if auth == "" {
+		return false
+	}
+
+	const prefix = "Basic "
+	if !strings.HasPrefix(auth, prefix) {
+		return false
+	}
+
+	// Decode the base64 credentials
+	encoded := auth[len(prefix):]
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return false
+	}
+
+	// Split username:password
+	credentials := string(decoded)
+	parts := strings.SplitN(credentials, ":", 2)
+	if len(parts) != 2 {
+		return false
+	}
+
+	username := parts[0]
+	password := parts[1]
+
+	// Check username matches
+	if username != s.username {
+		return false
+	}
+
+	hash := sha256.Sum256([]byte(password))
+
+	return subtle.ConstantTimeCompare(hash[:], s.passwordHash) == 1
+}
+
+func (s *proxyServer) handleTunnel(w http.ResponseWriter, r *http.Request) {
 	targetConn, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
 	if err != nil {
 		slog.Error("Failed to connect to target", "host", r.Host, "error", err)
@@ -90,7 +163,7 @@ func handleTunnel(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Tunnel closed", "host", r.Host)
 }
 
-func handleHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *proxyServer) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	targetURL := r.URL.String()
 	if !r.URL.IsAbs() && r.Host != "" {
 		targetURL = "http://" + r.Host + r.URL.Path
@@ -131,4 +204,23 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, resp.Body)
 
 	slog.Info("HTTP request proxied", "url", targetURL, "status", resp.StatusCode)
+}
+
+func main() {
+	err := godotenv.Load()
+	if err != nil {
+		slog.Error("Error loading .env file", "error", err)
+	}
+
+	utils.InitLogger()
+
+	username := utils.ExpectEnvVar("PROXY_USER")
+	passwordHashHex := utils.ExpectEnvVar("PROXY_PASSWORD_SHA256")
+	server, err := NewProxyServer(username, passwordHashHex)
+	if err != nil {
+		slog.Error("Failed to create proxy server", "error", err)
+		panic(err)
+	}
+
+	server.Run()
 }

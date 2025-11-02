@@ -16,3 +16,20 @@ func InitLogger() {
 		slog.SetDefault(logger)
 	}
 }
+
+func ExpectEnvVar(name string) string {
+	value := os.Getenv(name)
+	if value == "" {
+		slog.Error("Environment variable is not set", "name", name)
+		panic("Environment variable is not set")
+	}
+	return value
+}
+
+func GetEnvOrDefault(name, defaultValue string) string {
+	value := os.Getenv(name)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
