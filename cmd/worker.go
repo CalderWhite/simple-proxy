@@ -207,10 +207,8 @@ func (s *proxyServer) handleHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		slog.Error("Error loading .env file", "error", err)
-	}
+	// Only load the .env file if it exists
+	godotenv.Load()
 
 	utils.InitLogger()
 

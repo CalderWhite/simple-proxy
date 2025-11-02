@@ -1,0 +1,30 @@
+# Git files
+.git
+.gitignore
+
+# Python files (test scripts)
+*.py
+__pycache__
+
+# Documentation
+README.md
+
+# Environment files
+.env
+.env.*
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
