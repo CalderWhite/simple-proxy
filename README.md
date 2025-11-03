@@ -18,13 +18,14 @@ The advantage here is that you wanted to fan out massively for a short period of
 # Usage
 
 ```bash
-$ python3 -m cwhite-simple-proxy --count 3 --region us-east-1 --provider aws_fargate --username default --password MY_PASSWORD
+$ git clone https://github.com/CalderWhite/simple-proxy && cd simple-proxy
+$ python3 -m simpleproxy --count 3 --region us-east-1 --provider aws_fargate --username default --password MY_PASSWORD
 ```
 
 After you're done,
 
 ```bash
-$ python3 -m cwhite-simple-proxy cleanup --provider aws_fargate --region us-east-1
+$ python3 -m simpleproxy cleanup --provider aws_fargate --region us-east-1
 ```
 
 
