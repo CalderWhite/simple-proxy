@@ -71,7 +71,7 @@ def ensure_log_group(logs, name, retention_days=7):
     except ClientError as e:
         if e.response["Error"]["Code"] != "OperationAbortedException": raise
 
-def register_task(ecs, family, image, cpu, memory, port, envs, exec_role_arn, log_group):
+def register_task(ecs, family, image, cpu, memory, port, envs, exec_role_arn, log_group, region):
     logging.info(f"Registering task definition {family} with image {image}, CPU {cpu}, memory {memory}, port {port}, environment {envs}, and execution role {exec_role_arn}")
     return ecs.register_task_definition(
         family=family,
@@ -87,7 +87,7 @@ def register_task(ecs, family, image, cpu, memory, port, envs, exec_role_arn, lo
             "portMappings":[{"containerPort":port,"protocol":"tcp"}],
             "environment":[{"name":k,"value":v} for k,v in envs],
             "logConfiguration":{"logDriver":"awslogs","options":{
-                "awslogs-group":log_group,"awslogs-region":boto3.session.Session().region_name,
+                "awslogs-group":log_group,"awslogs-region":region,
                 "awslogs-stream-prefix":"ecs"
             }}
         }]
@@ -256,7 +256,7 @@ def cmd_run(args):
     ensure_log_group(logs, log_group)
 
     family = f"{args.cluster}-{int(time.time())}"
-    task_def = register_task(ecs, family, args.image, args.cpu, args.memory, args.port, envs, exec_role_arn, log_group)
+    task_def = register_task(ecs, family, args.image, args.cpu, args.memory, args.port, envs, exec_role_arn, log_group, args.region)
 
     task_arns = run_tasks(ecs, cluster, task_def, subnets, sg_id, args.count)
     wait_running(ecs, cluster, task_arns)
