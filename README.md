@@ -10,7 +10,7 @@ Simple proxy allows you to pay at-cost for datacenter proxies on your own cloud 
 
 Pay-per-ip pricing: $750 ([source](https://oxylabs.io/products/datacenter-proxies))     
 Pay-per-traffic pricing: $460 ([source](https://oxylabs.io/products/datacenter-proxies))    
-Simple Proxy: **$15** ($0.015/hr x 1000, 3TB of bandwidth included for 1 hour)
+Simple Proxy: **$15** ($0.015/hr x 1000, 3TB of traffic included for 1 hour)
 
 The advantage here is that you wanted to fan out massively for a short period of time and suck down a ton of data. Off-the-shelf proxy solutions simply don't accomodate this.
 
