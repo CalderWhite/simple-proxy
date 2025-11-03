@@ -54,6 +54,8 @@ async def test_ensure_minimum_cardinality() -> None:
     """
     This test is optional, and ensures that after 100 parallel requests, we see at least <n> many IPs.
     You must provision the cluster with <n> ips in the first place for this test to pass.
+
+    NOTE: This test is useless until loadbalancers are implemented.
     """
     n = 5
     remote_address = os.getenv("REMOTE_TEST_SERVER")
