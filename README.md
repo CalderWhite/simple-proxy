@@ -1,36 +1,34 @@
 # Simple Proxy
 
-[write blurb about how proxy services are wildly overpriced]
+Most proxy services limit your concurrency to ~80 connections, and either charge you per-ip or per-traffic, both of which are wildly expensive for short-lived, bandwidth intensive jobs.
+
+Simple proxy allows you to pay at-cost for datacenter proxies on your own cloud account.
+
+## Pricing Example
+
+**1TB download, 1 hour, 1000 IPs**
+
+Pay-per-ip pricing: $750 ([source](https://oxylabs.io/products/datacenter-proxies))     
+Pay-per-traffic pricing: $460 ([source](https://oxylabs.io/products/datacenter-proxies))    
+Simple Proxy: **$20**    
+
+I'm eyeballing the $20 calculation, but the idea is you are only paying for the ipv4 addresses, fargate containers (lowest priced containers), and the egress ($0.08/GB).
+
+The advantage here is that you wanted to fan out massively for a short period of time and suck down a ton of data. Off-the-shelf proxy solutions simply don't accomodate this.
+
 
 # Usage
 
-Before you deploy your proxy servers, you must generate a password hash for them
-to use for authentication. This is made simple with the given helper script in Python.
-
 ```bash
-$ python3 gen_hash.py
+$ python3 -m cwhite-simple-proxy --count 3 --region us-east-1 --provider aws_fargate --username default --password MY_PASSWORD
 ```
 
-Enter your desired password, and it will output the hash you need to use for deployment.
-
-Here is an example command that will give you 5 proxy servers backed by AWS Fargate behind a load balancer:
+After you're done,
 
 ```bash
-$ python3 simple_proxy_init.py run --count 5 --env PROXY_USER=default --env PROXY_PASSWORD_SHA256=<your hash> --region us-west-2
+$ python3 -m cwhite-simple-proxy cleanup --provider aws_fargate --region us-east-1
 ```
 
-This command will:
-- Create an Application Load Balancer (ALB) that's publicly accessible
-- Deploy 5 ECS Fargate tasks protected by security groups (only accept traffic from ALB)
-- Automatically register all tasks with the load balancer
-- Return a **single URL** that distributes requests across all proxy instances
-
-The proxy servers are NOT directly accessible from the internet - all traffic must go through the load balancer URL.
-
-When you are done, run the following to delete all the resources you are consuming:
-```bash
-$ python3 simple_proxy_init.py cleanup
-```
 
 # Testing
 
