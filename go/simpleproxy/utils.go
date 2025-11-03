@@ -1,4 +1,4 @@
-package utils
+package simpleproxy
 
 import (
 	"log/slog"

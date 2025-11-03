@@ -1,4 +1,4 @@
-package main
+package simpleproxy
 
 import (
 	"crypto/sha256"
@@ -12,17 +12,14 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/joho/godotenv"
-	utils "github.com/simple-proxy"
 )
 
-type proxyServer struct {
+type ProxyServer struct {
 	passwordHash []byte
 	username     string
 }
 
-func NewProxyServer(username, passwordHashHex string) (*proxyServer, error) {
+func NewProxyServer(username, passwordHashHex string) (*ProxyServer, error) {
 	hash, err := hex.DecodeString(passwordHashHex)
 	if err != nil {
 		slog.Error("Failed to decode password hash", "error", err)
@@ -36,14 +33,14 @@ func NewProxyServer(username, passwordHashHex string) (*proxyServer, error) {
 
 	slog.Info("Password hash loaded successfully")
 
-	return &proxyServer{
+	return &ProxyServer{
 		passwordHash: hash,
 		username:     username,
 	}, nil
 }
 
-func (s *proxyServer) Run() error {
-	port := utils.GetEnvOrDefault("PROXY_PORT", "8080")
+func (s *ProxyServer) Run() error {
+	port := GetEnvOrDefault("PROXY_PORT", "8080")
 
 	slog.Info("Simple Proxy is starting...", "port", port)
 
@@ -63,7 +60,7 @@ func (s *proxyServer) Run() error {
 	return nil
 }
 
-func (s *proxyServer) proxyHandler(w http.ResponseWriter, r *http.Request) {
+func (s *ProxyServer) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Request received",
 		"method", r.Method,
 		"host", r.Host,
@@ -86,7 +83,7 @@ func (s *proxyServer) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	s.handleHTTP(w, r)
 }
 
-func (s *proxyServer) authenticate(r *http.Request) bool {
+func (s *ProxyServer) authenticate(r *http.Request) bool {
 	auth := r.Header.Get("Proxy-Authorization")
 	if auth == "" {
 		return false
@@ -124,7 +121,7 @@ func (s *proxyServer) authenticate(r *http.Request) bool {
 	return subtle.ConstantTimeCompare(hash[:], s.passwordHash) == 1
 }
 
-func (s *proxyServer) handleTunnel(w http.ResponseWriter, r *http.Request) {
+func (s *ProxyServer) handleTunnel(w http.ResponseWriter, r *http.Request) {
 	targetConn, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
 	if err != nil {
 		slog.Error("Failed to connect to target", "host", r.Host, "error", err)
@@ -163,7 +160,7 @@ func (s *proxyServer) handleTunnel(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Tunnel closed", "host", r.Host)
 }
 
-func (s *proxyServer) handleHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *ProxyServer) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	targetURL := r.URL.String()
 	if !r.URL.IsAbs() && r.Host != "" {
 		targetURL = "http://" + r.Host + r.URL.Path
@@ -204,21 +201,4 @@ func (s *proxyServer) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, resp.Body)
 
 	slog.Info("HTTP request proxied", "url", targetURL, "status", resp.StatusCode)
-}
-
-func main() {
-	// Only load the .env file if it exists
-	godotenv.Load()
-
-	utils.InitLogger()
-
-	username := utils.ExpectEnvVar("PROXY_USER")
-	passwordHashHex := utils.ExpectEnvVar("PROXY_PASSWORD_SHA256")
-	server, err := NewProxyServer(username, passwordHashHex)
-	if err != nil {
-		slog.Error("Failed to create proxy server", "error", err)
-		panic(err)
-	}
-
-	server.Run()
 }
