@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cwhite-simple-proxy"
+version = "0.1.0"
+description = "Deploy proxy servers to cloud providers with ease"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Simple Proxy Contributors"}
+]
+keywords = ["proxy", "aws", "fargate", "cloud", "deployment"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: Proxy Servers",
+    "Topic :: System :: Networking",
+]
+
+dependencies = [
+    "boto3>=1.40.0",
+    "requests>=2.32.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.0.0",
+    "aiohttp>=3.13.0",
+]
+
+[project.scripts]
+simpleproxy = "simpleproxy.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/calderwhite/simple-proxy"
+Repository = "https://github.com/calderwhite/simple-proxy"
+Issues = "https://github.com/calderwhite/simple-proxy/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["simpleproxy*"]
+exclude = ["tests*", "go*"]
+
