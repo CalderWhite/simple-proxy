@@ -27,16 +27,15 @@ func NewCLI() *cobra.Command {
 		RunE:  WorkerHandler,
 	}
 
-	loadbalancerCmd := &cobra.Command{
-		Use:   "loadbalancer",
-		Short: "Run the load balancer server",
-		Args:  cobra.NoArgs,
-		RunE:  LoadBalancerHandler,
-	}
+	// loadbalancerCmd := &cobra.Command{
+	// 	Use:   "load-balancer",
+	// 	Short: "Run the load balancer server",
+	// 	Args:  cobra.NoArgs,
+	// 	RunE:  LoadBalancerHandler,
+	// }
 
 	rootCmd.AddCommand(
 		workerCmd,
-		loadbalancerCmd,
 	)
 
 	return rootCmd

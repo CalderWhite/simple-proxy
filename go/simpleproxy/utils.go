@@ -21,7 +21,7 @@ func ExpectEnvVar(name string) string {
 	value := os.Getenv(name)
 	if value == "" {
 		slog.Error("Environment variable is not set", "name", name)
-		panic("Environment variable is not set")
+		os.Exit(1)
 	}
 	return value
 }
