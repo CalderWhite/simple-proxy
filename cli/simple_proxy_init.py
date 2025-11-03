@@ -71,7 +71,7 @@ def ensure_log_group(logs, name, retention_days=7):
     except ClientError as e:
         if e.response["Error"]["Code"] != "OperationAbortedException": raise
 
-def register_task(ecs, family, image, cpu, memory, port, envs, exec_role_arn, log_group):
+def register_task(ecs, family, image, cpu, memory, port, envs, exec_role_arn, log_group, region):
     logging.info(f"Registering task definition {family} with image {image}, CPU {cpu}, memory {memory}, port {port}, environment {envs}, and execution role {exec_role_arn}")
     return ecs.register_task_definition(
         family=family,
@@ -87,7 +87,7 @@ def register_task(ecs, family, image, cpu, memory, port, envs, exec_role_arn, lo
             "portMappings":[{"containerPort":port,"protocol":"tcp"}],
             "environment":[{"name":k,"value":v} for k,v in envs],
             "logConfiguration":{"logDriver":"awslogs","options":{
-                "awslogs-group":log_group,"awslogs-region":boto3.session.Session().region_name,
+                "awslogs-group":log_group,"awslogs-region":region,
                 "awslogs-stream-prefix":"ecs"
             }}
         }]
@@ -256,7 +256,7 @@ def cmd_run(args):
     ensure_log_group(logs, log_group)
 
     family = f"{args.cluster}-{int(time.time())}"
-    task_def = register_task(ecs, family, args.image, args.cpu, args.memory, args.port, envs, exec_role_arn, log_group)
+    task_def = register_task(ecs, family, args.image, args.cpu, args.memory, args.port, envs, exec_role_arn, log_group, args.region)
 
     task_arns = run_tasks(ecs, cluster, task_def, subnets, sg_id, args.count)
     wait_running(ecs, cluster, task_arns)
@@ -290,7 +290,7 @@ def main():
     # Run command
     run_parser = subparsers.add_parser("run", help="Run tasks in ECS Fargate")
     run_parser.add_argument("--count", type=int, required=True, help="Number of tasks to run")
-    run_parser.add_argument("--image", default="calder/simple-proxy:latest", help="Docker image to run")
+    run_parser.add_argument("--image", default="calderwhite/simple-proxy:latest", help="Docker image to run")
     run_parser.add_argument("--env", action="append", default=[], help="KEY=VALUE environment variables (repeat)")
     run_parser.add_argument("--region", default="us-east-1", help="AWS region")
     run_parser.add_argument("--cluster", default="oneoff-fargate", help="ECS cluster name")

@@ -13,11 +13,19 @@ $ python3 gen_hash.py
 
 Enter your desired password, and it will output the hash you need to use for deployment.
 
-Here is an example command that will give you 5 proxy IPs backed by AWS Fargate
+Here is an example command that will give you 5 proxy servers backed by AWS Fargate behind a load balancer:
 
 ```bash
-$ python3 simply_proxy_init.py run --count 5 --env PROXY_USER=default --env PROXY_PASSWORD_SHA256=<your hash> --region us-west-2
+$ python3 simple_proxy_init.py run --count 5 --env PROXY_USER=default --env PROXY_PASSWORD_SHA256=<your hash> --region us-west-2
 ```
+
+This command will:
+- Create an Application Load Balancer (ALB) that's publicly accessible
+- Deploy 5 ECS Fargate tasks protected by security groups (only accept traffic from ALB)
+- Automatically register all tasks with the load balancer
+- Return a **single URL** that distributes requests across all proxy instances
+
+The proxy servers are NOT directly accessible from the internet - all traffic must go through the load balancer URL.
 
 When you are done, run the following to delete all the resources you are consuming:
 ```bash
