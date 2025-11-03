@@ -41,3 +41,9 @@ $ pytest
 
 Note that you must first set the value of your remote server in .test.env (see
 the template provided in this repository).
+
+# Notes
+
+## Vultr VKE 
+
+I use the nodetype `vc2-1c-2gb`, however there are a few node types cheaper than that, such as `vc2-1c-1gb`, or the ipv6 limited `vc2-1c-0.5gb-v6`. The problem is that these two node types are not supported in VKE (to my knowledge). Supporting them would require writing a provider that provisions the machines with the simpleproxy docker container (or just run it bare metal). This is doable, but requires extra effort. Feel free to open a PR for this and add cost savings of $0.008/hr/server (which works out to ~$8/hr if you are running 1000 machines)

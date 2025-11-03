@@ -55,13 +55,14 @@ async def test_ensure_minimum_cardinality() -> None:
     This test is optional, and ensures that after 100 parallel requests, we see at least <n> many IPs.
     You must provision the cluster with <n> ips in the first place for this test to pass.
 
-    NOTE: This test is useless until loadbalancers are implemented.
+    This works for providers with a load balancer, such as vultr_vke.
+
     """
-    n = 5
+    n = 10
     remote_address = os.getenv("REMOTE_TEST_SERVER")
     
     tasks = [get_ip(proxies=remote_address) for _ in range(100)]
     ips = await asyncio.gather(*tasks)
     unique_ips = set(ips)
-    
+
     assert len(unique_ips) >= n, f"Expected at least {n} unique IPs, but got {len(unique_ips)}: {unique_ips}"
