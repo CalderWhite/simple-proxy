@@ -13,6 +13,12 @@ $ python3 gen_hash.py
 
 Enter your desired password, and it will output the hash you need to use for deployment.
 
+Here is an example command that will give you 5 proxy IPs backed by AWS Fargate
+
+```bash
+$ python3 simply_proxy_init.py run --count 5 --env PROXY_USER=default --env PROXY_PASSWORD_SHA256=<your hash> --region us-west-2
+```
+
 # Testing
 
 There is a short test script to ensure your proxy is both working and sending

@@ -290,7 +290,7 @@ def main():
     # Run command
     run_parser = subparsers.add_parser("run", help="Run tasks in ECS Fargate")
     run_parser.add_argument("--count", type=int, required=True, help="Number of tasks to run")
-    run_parser.add_argument("--image", required=True, help="Docker image to run")
+    run_parser.add_argument("--image", required=True, default="calder/simple-proxy:latest", help="Docker image to run")
     run_parser.add_argument("--env", action="append", default=[], help="KEY=VALUE environment variables (repeat)")
     run_parser.add_argument("--region", default="us-east-1", help="AWS region")
     run_parser.add_argument("--cluster", default="oneoff-fargate", help="ECS cluster name")
