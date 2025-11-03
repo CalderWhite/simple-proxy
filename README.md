@@ -19,6 +19,11 @@ Here is an example command that will give you 5 proxy IPs backed by AWS Fargate
 $ python3 simply_proxy_init.py run --count 5 --env PROXY_USER=default --env PROXY_PASSWORD_SHA256=<your hash> --region us-west-2
 ```
 
+When you are done, run the following to delete all the resources you are consuming:
+```bash
+$ python3 simple_proxy_init.py cleanup
+```
+
 # Testing
 
 There is a short test script to ensure your proxy is both working and sending
