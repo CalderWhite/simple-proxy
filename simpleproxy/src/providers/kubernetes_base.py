@@ -102,8 +102,9 @@ class KubernetesBaseProvider(CloudProvider):
         """Create a Deployment object."""
         # Convert cpu/memory from AWS format to k8s format if needed
         # AWS uses cpu units (256 = 0.25 vCPU), k8s uses millicores
+        # Use 100m CPU to fit on small nodes (vc2-1c-2gb) with system pods
         if cpu.isdigit():
-            cpu = f"{int(cpu) // 1}m"  # 256 -> 256m
+            cpu = "100m"  # Low enough to coexist with system pods on 1 vCPU nodes
         if memory.isdigit():
             memory = f"{memory}Mi"
         
